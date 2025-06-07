@@ -1,29 +1,40 @@
+# Use official PHP 8.0 FPM image
 FROM php:8.0-fpm
 
-WORKDIR /var/www/html
-
+# Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    unzip \
     git \
     curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    libpq-dev \
-    && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd xml
+    nginx \
+    && docker-php-ext-install pdo pdo_pgsql pgsql \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install Composer globally
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy project files
 COPY . .
 
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+# Install PHP dependencies (without dev packages)
+RUN composer install --no-dev --optimize-autoloader
 
+# Set correct permissions for Laravel folders
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy Nginx configuration file
+COPY ./nginx.conf /etc/nginx/sites-enabled/default
 
-EXPOSE 9000
+# Copy start script and make it executable
+COPY ./start.sh /start.sh
+RUN chmod +x /start.sh
 
-CMD ["/entrypoint.sh"]
+# Expose port 8080 for web traffic
+EXPOSE 8080
+
+# Run Nginx and PHP-FPM together
+CMD ["/start.sh"]

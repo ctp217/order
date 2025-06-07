@@ -5,6 +5,8 @@ services:
     plan: starter
     dockerfilePath: ./Dockerfile
     autoDeploy: true
+    ports:
+      - port: 8080
     envVars:
       - key: APP_ENV
         value: production
